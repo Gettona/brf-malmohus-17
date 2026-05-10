@@ -9,7 +9,7 @@ export default function CalendarPage() {
       <SectionHeader
         eyebrow="Kalender"
         title="Händelser i föreningen"
-        description="En enkel händelselista för expedition, möten och gemensamma aktiviteter. Kalenderknappen är en placeholder i första versionen."
+        description="En översikt över expedition, möten och gemensamma aktiviteter i föreningen."
       />
       <div className="mt-10 grid gap-5 lg:grid-cols-2">
         {events.map((item) => (

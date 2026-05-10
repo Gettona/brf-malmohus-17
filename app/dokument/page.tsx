@@ -9,7 +9,7 @@ export default function DocumentsPage() {
       <SectionHeader
         eyebrow="Dokumentbank"
         title="Sök och filtrera dokument"
-        description="Här finns placeholder-dokument för första versionen. Byt ut länkarna i data/documents.ts när riktiga filer läggs till."
+        description="Här samlas stadgar, årsredovisningar, ordningsregler, blanketter och praktisk information för boende och mäklare."
       />
       <div className="mt-10">
         <Suspense fallback={<p className="rounded bg-white p-6 text-slate-600">Laddar dokument...</p>}>

@@ -31,7 +31,6 @@ export function Footer() {
               {contact.phone}
             </a>
           </p>
-          <p className="mt-4 text-xs leading-5 text-slate-500">TODO: Koppla framtida autentisering för boendeportal och skyddade dokument.</p>
         </div>
       </PageContainer>
     </footer>

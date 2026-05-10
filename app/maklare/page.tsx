@@ -20,7 +20,7 @@ export default function BrokerPage() {
       <SectionHeader
         eyebrow="Mäklare & spekulanter"
         title="Föreningsfakta och dokument"
-        description="Samlad information för bostadsförsäljning. Uppgifterna är strukturerade som placeholder-data och bör verifieras innan skarp lansering."
+        description="Samlad information för bostadsförsäljning. Kontakta styrelsen om du behöver kompletterande uppgifter inför en överlåtelse."
       />
 
       <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">

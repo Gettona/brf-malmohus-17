@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev.mjs",
+    "dev:raw": "next dev",
+    "check:dev": "node scripts/checkDevServer.mjs",
     "generate:document-index": "node scripts/generateDocumentSearchIndex.mjs",
     "prebuild": "node scripts/generateDocumentSearchIndex.mjs",
     "build": "next build",

@@ -9,6 +9,12 @@
 
 ## Kommande etapper
 
-- Etapp 1: Innehall och struktur.
-- Etapp 2: Visuell polish och tillganglighet.
+- Etapp 1: Stabiliseringskontroll och lokalt dev-flode.
+- Etapp 2: Innehall och struktur.
 - Etapp 3: Publicering, doman och driftflode.
+
+## Etapp 1 - Stabiliseringskontroll
+
+- `npm run dev` stoppar nu port 3000 och rensar `.next` innan Next startas.
+- `npm run check:dev` kontrollerar huvudroutes och verifierar att faktisk Next CSS laddas med HTTP 200.
+- Undvik dold bakgrundsstart for vanligt utvecklingsarbete. Kor `npm run dev` i en terminal sa servern ager port 3000 tydligt.
