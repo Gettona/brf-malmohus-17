@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { DocumentCard } from "@/components/DocumentCard";
 import { SearchInput } from "@/components/SearchInput";
-import { documentCategories, documents, type DocumentCategory } from "@/data/documents";
+import { documentCategories, documents, type DocumentCategory, type DocumentItem } from "@/data/documents";
 
-export function DocumentBank() {
+export function DocumentBank({ items = documents }: { items?: DocumentItem[] }) {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("kategori");
   const [query, setQuery] = useState("");
@@ -16,14 +16,14 @@ export function DocumentBank() {
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return documents.filter((document) => {
+    return items.filter((document) => {
       const matchesCategory = category === "Alla" || document.category === category;
       const matchesQuery =
         !normalized ||
         [document.name, document.description, document.category, document.year].some((value) => value.toLowerCase().includes(normalized));
       return matchesCategory && matchesQuery;
     });
-  }, [category, query]);
+  }, [category, items, query]);
 
   return (
     <div>

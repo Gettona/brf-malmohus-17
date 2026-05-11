@@ -1,6 +1,7 @@
 const WORDPRESS_API_BASE = process.env.WORDPRESS_API_BASE ?? "https://admin.brfpilot.se/wp-json/wp/v2";
 
 import type { NewsItem } from "@/data/news";
+import { documentCategories, type DocumentCategory, type DocumentItem } from "@/data/documents";
 
 export type WordPressRendered = {
   rendered?: string;
@@ -56,6 +57,10 @@ export async function getLatestWordPressPosts(limit = 5) {
   return fetchWordPress<WordPressPost[]>(`/posts?per_page=${limit}&status=publish&_embed=1`);
 }
 
+export async function getWordPressPosts(limit = 50) {
+  return fetchWordPress<WordPressPost[]>(`/posts?per_page=${limit}&status=publish&_embed=1`);
+}
+
 export async function getWordPressNewsItems(limit = 20): Promise<NewsItem[]> {
   const posts = await getLatestWordPressPosts(limit);
 
@@ -67,6 +72,14 @@ export async function getWordPressNewsItems(limit = 20): Promise<NewsItem[]> {
 export async function getLatestWordPressPdfMedia(limit = 20) {
   const media = await fetchWordPress<WordPressMedia[]>(`/media?per_page=${limit}`);
   return media.filter((item) => item.mime_type === "application/pdf" || item.source_url.toLowerCase().endsWith(".pdf"));
+}
+
+export async function getWordPressDocumentItems(limit = 50): Promise<DocumentItem[]> {
+  const posts = await getWordPressPosts(limit);
+
+  return posts
+    .map(wordPressPostToDocumentItem)
+    .filter((item): item is DocumentItem => Boolean(item));
 }
 
 export function plainTextFromHtml(html = "") {
@@ -127,6 +140,70 @@ function getPostImage(post: WordPressPost): Pick<NewsItem, "image" | "imageAlt">
     image: decodeHtmlEntities(contentImage[1]),
     imageAlt: alt ? decodeHtmlEntities(alt) : "",
   };
+}
+
+function wordPressPostToDocumentItem(post: WordPressPost): DocumentItem | null {
+  const pdfHref = findPdfHref(post.content.rendered);
+
+  if (!pdfHref) {
+    return null;
+  }
+
+  const name = plainTextFromHtml(post.title.rendered);
+
+  if (!name) {
+    return null;
+  }
+
+  return {
+    name,
+    category: getPostDocumentCategory(post, name),
+    type: "PDF",
+    year: getDocumentYear(name, post.date),
+    description:
+      plainTextFromHtml(post.excerpt.rendered) ||
+      `PDF-dokument publicerat i WordPress ${new Intl.DateTimeFormat("sv-SE", { dateStyle: "medium" }).format(new Date(post.date))}.`,
+    href: pdfHref,
+  };
+}
+
+function findPdfHref(html = "") {
+  const hrefMatch = html.match(/href=["']([^"']+\.pdf(?:\?[^"']*)?)["']/i);
+
+  if (hrefMatch?.[1]) {
+    return decodeHtmlEntities(hrefMatch[1]);
+  }
+
+  const dataMatch = html.match(/data=["']([^"']+\.pdf(?:\?[^"']*)?)["']/i);
+  return dataMatch?.[1] ? decodeHtmlEntities(dataMatch[1]) : "";
+}
+
+function getPostDocumentCategory(post: WordPressPost, title: string): DocumentCategory {
+  const terms = post._embedded?.["wp:term"]?.flat() ?? [];
+  const category = terms.find(
+    (term) => term.taxonomy === "category" && documentCategories.includes(plainTextFromHtml(term.name) as DocumentCategory),
+  );
+
+  if (category?.name) {
+    return plainTextFromHtml(category.name) as DocumentCategory;
+  }
+
+  if (/årsredovisning|arsredovisning/i.test(title)) {
+    return "Årsredovisningar";
+  }
+
+  return "Ekonomi";
+}
+
+function getDocumentYear(title: string, date: string) {
+  const period = title.match(/\b(20\d{2})\s*[-/]\s*(20\d{2})\b/);
+
+  if (period) {
+    return `${period[1]}-${period[2]}`;
+  }
+
+  const year = title.match(/\b(20\d{2})\b/);
+  return year?.[1] ?? date.slice(0, 4);
 }
 
 function decodeHtmlEntities(value = "") {
