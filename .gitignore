@@ -28,6 +28,9 @@ pnpm-debug.log*
 .cache/
 *.tsbuildinfo
 
+# Generated WordPress migration artifacts
+wordpress-tools/dist/
+
 # OS and editor files
 .DS_Store
 Thumbs.db
