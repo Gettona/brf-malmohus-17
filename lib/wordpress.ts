@@ -1,7 +1,12 @@
 const WORDPRESS_API_BASE = process.env.WORDPRESS_API_BASE ?? "https://admin.brfpilot.se/wp-json/wp/v2";
 
 import type { NewsItem } from "@/data/news";
+import type { BoardMember } from "@/data/boardMembers";
+import type { ContactInfo } from "@/data/contact";
 import { documentCategories, type DocumentCategory, type DocumentItem } from "@/data/documents";
+import type { OfficeDate } from "@/data/officeHours";
+
+const WORDPRESS_REST_BASE = WORDPRESS_API_BASE.replace(/\/wp\/v2\/?$/, "");
 
 export type WordPressRendered = {
   rendered?: string;
@@ -41,8 +46,56 @@ export type WordPressMedia = {
   title: WordPressRendered;
 };
 
+export type WordPressBoardMember = {
+  id: number;
+  menu_order?: number;
+  title: WordPressRendered;
+  meta?: {
+    brf_role?: string;
+    brf_phone?: string;
+  };
+  _embedded?: {
+    "wp:featuredmedia"?: Array<{
+      source_url?: string;
+    }>;
+  };
+};
+
+export type WordPressOfficeDate = {
+  id: number;
+  menu_order?: number;
+  title: WordPressRendered;
+  meta?: {
+    brf_date?: string;
+    brf_label?: string;
+  };
+};
+
+export type WordPressContact = {
+  brf_contact_email?: string;
+  brf_contact_phone?: string;
+  brf_expedition_address?: string;
+  brf_telephone_hours?: string;
+  brf_riksbyggen_phone?: string;
+  brf_caretaker_phone?: string;
+  brf_fault_report_url?: string;
+  brf_broker_email?: string;
+};
+
 async function fetchWordPress<T>(path: string): Promise<T> {
   const response = await fetch(`${WORDPRESS_API_BASE}${path}`, {
+    next: { revalidate: 60 },
+  });
+
+  if (!response.ok) {
+    throw new Error(`WordPress API svarade ${response.status} for ${path}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+async function fetchWordPressRest<T>(path: string): Promise<T> {
+  const response = await fetch(`${WORDPRESS_REST_BASE}${path}`, {
     next: { revalidate: 60 },
   });
 
@@ -80,6 +133,53 @@ export async function getWordPressDocumentItems(limit = 50): Promise<DocumentIte
   return posts
     .map(wordPressPostToDocumentItem)
     .filter((item): item is DocumentItem => Boolean(item));
+}
+
+export async function getWordPressContactInfo(fallback: ContactInfo): Promise<ContactInfo> {
+  const item = await fetchWordPressRest<WordPressContact>("/brf/v1/contact");
+
+  const email = valueOrFallback(item.brf_contact_email, fallback.email);
+  const phone = valueOrFallback(item.brf_contact_phone, fallback.phone);
+  const riksbyggenPhone = valueOrFallback(item.brf_riksbyggen_phone, fallback.riksbyggenPhone);
+  const caretakerPhone = valueOrFallback(item.brf_caretaker_phone, fallback.caretakerPhone);
+  const brokerEmail = valueOrFallback(item.brf_broker_email, fallback.brokerEmail);
+
+  return {
+    ...fallback,
+    email,
+    emailHref: toEmailHref(email),
+    phone,
+    phoneHref: toPhoneHref(phone),
+    expeditionAddress: valueOrFallback(item.brf_expedition_address, fallback.expeditionAddress),
+    telephoneHours: valueOrFallback(item.brf_telephone_hours, fallback.telephoneHours),
+    riksbyggenPhone,
+    riksbyggenPhoneHref: toPhoneHref(riksbyggenPhone),
+    caretakerPhone,
+    caretakerPhoneHref: toPhoneHref(caretakerPhone),
+    faultReportUrl: valueOrFallback(item.brf_fault_report_url, fallback.faultReportUrl),
+    boardEmail: email,
+    boardEmailHref: toEmailHref(email),
+    brokerEmail,
+    brokerEmailHref: toEmailHref(brokerEmail),
+  };
+}
+
+export async function getWordPressBoardMembers(fallback: BoardMember[]): Promise<BoardMember[]> {
+  const items = await fetchWordPress<WordPressBoardMember[]>("/brf-board-members?per_page=100&status=publish&_embed=1&orderby=menu_order&order=asc");
+  const members = items
+    .map(wordPressBoardMemberToBoardMember)
+    .filter((item): item is BoardMember => Boolean(item));
+
+  return members.length > 0 ? members : fallback;
+}
+
+export async function getWordPressOfficeDates(fallback: OfficeDate[]): Promise<OfficeDate[]> {
+  const items = await fetchWordPress<WordPressOfficeDate[]>("/brf-office-dates?per_page=100&status=publish&orderby=menu_order&order=asc");
+  const dates = items
+    .map(wordPressOfficeDateToOfficeDate)
+    .filter((item): item is OfficeDate => Boolean(item));
+
+  return dates.length > 0 ? dates : fallback;
 }
 
 export function plainTextFromHtml(html = "") {
@@ -167,6 +267,38 @@ function wordPressPostToDocumentItem(post: WordPressPost): DocumentItem | null {
   };
 }
 
+function wordPressBoardMemberToBoardMember(item: WordPressBoardMember): BoardMember | null {
+  const name = plainTextFromHtml(item.title.rendered);
+
+  if (!name) {
+    return null;
+  }
+
+  const role = valueOrFallback(item.meta?.brf_role, "Styrelsemedlem");
+  const phone = item.meta?.brf_phone?.trim();
+  const image = item._embedded?.["wp:featuredmedia"]?.[0]?.source_url;
+
+  return {
+    name,
+    role,
+    ...(phone ? { phone, phoneHref: toPhoneHref(phone) } : {}),
+    ...(image ? { image } : {}),
+  };
+}
+
+function wordPressOfficeDateToOfficeDate(item: WordPressOfficeDate): OfficeDate | null {
+  const date = item.meta?.brf_date?.trim();
+
+  if (!date) {
+    return null;
+  }
+
+  return {
+    date,
+    label: valueOrFallback(item.meta?.brf_label, plainTextFromHtml(item.title.rendered) || date),
+  };
+}
+
 function findPdfHref(html = "") {
   const hrefMatch = html.match(/href=["']([^"']+\.pdf(?:\?[^"']*)?)["']/i);
 
@@ -204,6 +336,20 @@ function getDocumentYear(title: string, date: string) {
 
   const year = title.match(/\b(20\d{2})\b/);
   return year?.[1] ?? date.slice(0, 4);
+}
+
+function valueOrFallback(value: string | undefined, fallback: string) {
+  const cleaned = value?.trim();
+  return cleaned ? cleaned : fallback;
+}
+
+function toEmailHref(email: string) {
+  return `mailto:${email.trim()}`;
+}
+
+function toPhoneHref(phone: string) {
+  const normalized = phone.replace(/[^\d+]/g, "");
+  return normalized ? `tel:${normalized}` : "";
 }
 
 function decodeHtmlEntities(value = "") {

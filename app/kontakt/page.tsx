@@ -8,8 +8,15 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { boardMembers, responsibilityGroups, type BoardMember } from "@/data/boardMembers";
 import { contact } from "@/data/contact";
 import { officeDates2026 } from "@/data/officeHours";
+import { getWordPressBoardMembers, getWordPressContactInfo, getWordPressOfficeDates } from "@/lib/wordpress";
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const [contactInfo, contactBoardMembers, contactOfficeDates] = await Promise.all([
+    getWordPressContactInfo(contact).catch(() => contact),
+    getWordPressBoardMembers(boardMembers).catch(() => boardMembers),
+    getWordPressOfficeDates(officeDates2026).catch(() => officeDates2026),
+  ]);
+
   return (
     <PageContainer className="py-16">
       <SectionHeader
@@ -23,8 +30,8 @@ export default function ContactPage() {
           title="E-post"
           icon={Mail}
           description={
-            <a href={contact.emailHref} className="font-semibold text-brand-700 underline">
-              {contact.email}
+            <a href={contactInfo.emailHref} className="font-semibold text-brand-700 underline">
+              {contactInfo.email}
             </a>
           }
         />
@@ -32,18 +39,18 @@ export default function ContactPage() {
           title="Telefon"
           icon={Phone}
           description={
-            <a href={contact.phoneHref} className="font-semibold text-brand-700 underline" aria-label="Ring föreningen på 0723 19 01 92">
-              {contact.phone}
+            <a href={contactInfo.phoneHref} className="font-semibold text-brand-700 underline" aria-label={`Ring föreningen på ${contactInfo.phone}`}>
+              {contactInfo.phone}
             </a>
           }
         />
-        <InfoCard title="Expedition" icon={MapPin} description={contact.expeditionAddress} />
+        <InfoCard title="Expedition" icon={MapPin} description={contactInfo.expeditionAddress} />
       </section>
 
       <section className="mt-16">
         <SectionHeader eyebrow="Styrelsen" title="Styrelsemedlemmar" description="Kontakta gärna rätt person om du vet vem ärendet gäller. Annars går det bra att kontakta styrelsen gemensamt." />
         <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {boardMembers.map((member) => (
+          {contactBoardMembers.map((member) => (
             <BoardMemberCard key={member.name} member={member} />
           ))}
         </div>
@@ -75,23 +82,23 @@ export default function ContactPage() {
       <section id="kontaktformular" className="scroll-mt-24 mt-16 grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
         <div className="grid gap-5">
           <SectionHeader eyebrow="Expeditionen" title="Besök och telefontid" />
-          <InfoCard title="Adress" description={contact.expeditionAddress} icon={MapPin} />
+          <InfoCard title="Adress" description={contactInfo.expeditionAddress} icon={MapPin} />
           <InfoCard
             title="Telefon"
             icon={Phone}
             description={
-              <a href={contact.phoneHref} className="font-semibold text-brand-700 underline" aria-label="Ring expeditionen på 0723 19 01 92">
-                {contact.phone}
+              <a href={contactInfo.phoneHref} className="font-semibold text-brand-700 underline" aria-label={`Ring expeditionen på ${contactInfo.phone}`}>
+                {contactInfo.phone}
               </a>
             }
           />
-          <InfoCard title="Telefontid" description={contact.telephoneHours} icon={Clock} />
+          <InfoCard title="Telefontid" description={contactInfo.telephoneHours} icon={Clock} />
         </div>
 
         <div>
           <SectionHeader eyebrow="2026" title="Expeditionens öppettider" description="Under 2026 kommer expeditionen att vara öppen mellan kl. 18.00-19.00 under dessa dagar." />
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {officeDates2026.map((item) => (
+            {contactOfficeDates.map((item) => (
               <time key={item.date} dateTime={item.date} className="rounded border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-brand-900 shadow-sm">
                 {item.label}
               </time>
@@ -112,17 +119,17 @@ export default function ContactPage() {
             <h3 className="mt-4 text-xl font-semibold">Kontakta föreningen</h3>
             <p className="mt-3 text-brand-50">
               E-post:{" "}
-              <a href={contact.emailHref} className="font-semibold underline">
-                {contact.email}
+              <a href={contactInfo.emailHref} className="font-semibold underline">
+                {contactInfo.email}
               </a>
             </p>
             <p className="mt-2 text-brand-50">
               Telefon:{" "}
-              <a href={contact.phoneHref} className="font-semibold underline" aria-label="Ring föreningen på 0723 19 01 92">
-                {contact.phone}
+              <a href={contactInfo.phoneHref} className="font-semibold underline" aria-label={`Ring föreningen på ${contactInfo.phone}`}>
+                {contactInfo.phone}
               </a>
             </p>
-            <p className="mt-2 text-brand-50">Expedition: {contact.expeditionAddress}</p>
+            <p className="mt-2 text-brand-50">Expedition: {contactInfo.expeditionAddress}</p>
           </div>
         </div>
         <Suspense fallback={<p className="rounded bg-white p-6 text-slate-600">Laddar kontaktformulär...</p>}>
