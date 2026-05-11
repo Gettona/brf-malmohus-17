@@ -4,7 +4,7 @@ import { NewsCard } from "@/components/NewsCard";
 import { PageContainer } from "@/components/PageContainer";
 import { QuickLinkCard } from "@/components/QuickLinkCard";
 import { SectionHeader } from "@/components/SectionHeader";
-import { news } from "@/data/news";
+import { news, type NewsItem } from "@/data/news";
 import { getWordPressNewsItems } from "@/lib/wordpress";
 
 const quickLinks = [
@@ -19,10 +19,27 @@ const quickLinks = [
 async function getHomeNews() {
   try {
     const wordpressNews = await getWordPressNewsItems(3);
-    return wordpressNews.length > 0 ? wordpressNews : news.slice(0, 3);
+    return mergeNewsItems(wordpressNews, news).slice(0, 3);
   } catch {
     return news.slice(0, 3);
   }
+}
+
+function mergeNewsItems(primary: NewsItem[], fallback: NewsItem[]) {
+  const seen = new Set<string>();
+
+  return [...primary, ...fallback]
+    .filter((item) => {
+      const key = `${item.date}-${item.title}`.toLowerCase();
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export default async function HomePage() {

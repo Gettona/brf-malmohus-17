@@ -1,16 +1,33 @@
 import { NewsCard } from "@/components/NewsCard";
 import { PageContainer } from "@/components/PageContainer";
 import { SectionHeader } from "@/components/SectionHeader";
-import { news } from "@/data/news";
+import { news, type NewsItem } from "@/data/news";
 import { getWordPressNewsItems } from "@/lib/wordpress";
 
 async function getResidentNews() {
   try {
     const wordpressNews = await getWordPressNewsItems(50);
-    return wordpressNews.length > 0 ? wordpressNews : news;
+    return mergeNewsItems(wordpressNews, news);
   } catch {
     return news;
   }
+}
+
+function mergeNewsItems(primary: NewsItem[], fallback: NewsItem[]) {
+  const seen = new Set<string>();
+
+  return [...primary, ...fallback]
+    .filter((item) => {
+      const key = `${item.date}-${item.title}`.toLowerCase();
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export default async function ResidentNewsPage() {
