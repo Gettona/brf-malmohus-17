@@ -52,4 +52,11 @@
 - Nasta steg ar att testa WordPress-roller for styrelse/redaktorer.
 - Redaktorer ska kunna skapa nyheter, ladda upp PDF:er/bilder och uppdatera utvalt innehall.
 - Next-sidan visar annu statisk data och behover en separat CMS-proof-of-concept innan WordPress-innehall visas publikt.
-- Se `WORDPRESS-REDAKTORSFLODE.md`.
+- Se `WORDPRESS-REDAKTORSFLODE.md` och `CMS-MAPPNING.md`.
+
+## Etapp 7 - WordPress-nyheter i Next
+
+- `admin.brfpilot.se` anvands som WordPress CMS/admin.
+- Startsidan och `/for-boende/nyheter` hamtar nu WordPress-inlagg som nyheter.
+- Om WordPress API inte svarar anvands befintlig statisk `data/news.ts` som fallback.
+- `/cms-test` finns kvar som intern kontrollvy for WordPress-inlagg och PDF-media.

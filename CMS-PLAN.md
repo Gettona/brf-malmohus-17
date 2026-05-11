@@ -106,3 +106,5 @@ Redaktorer ska inte ha tillgang till att andra tema, plugins, menyer eller layou
 3. Inventera WordPress-admin och media.
 4. Koppla nyheter och dokument till WordPress i en separat etapp.
 5. Lat redaktorer testa sjalvservice pa staging innan skarp doman flyttas.
+
+Detaljerad mappning mellan befintliga `data/*.ts`-filer, WordPress-innehallstyper och Next-routes finns i `CMS-MAPPNING.md`.

@@ -2,10 +2,21 @@ import { NewsCard } from "@/components/NewsCard";
 import { PageContainer } from "@/components/PageContainer";
 import { SectionHeader } from "@/components/SectionHeader";
 import { news } from "@/data/news";
+import { getWordPressNewsItems } from "@/lib/wordpress";
 
-const categories = Array.from(new Set(news.map((item) => item.category)));
+async function getResidentNews() {
+  try {
+    const wordpressNews = await getWordPressNewsItems(50);
+    return wordpressNews.length > 0 ? wordpressNews : news;
+  } catch {
+    return news;
+  }
+}
 
-export default function ResidentNewsPage() {
+export default async function ResidentNewsPage() {
+  const newsItems = await getResidentNews();
+  const categories = Array.from(new Set(newsItems.map((item) => item.category)));
+
   return (
     <PageContainer className="py-16">
       <SectionHeader
@@ -23,7 +34,7 @@ export default function ResidentNewsPage() {
       </section>
 
       <section className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {news.map((item) => (
+        {newsItems.map((item) => (
           <NewsCard key={`${item.date}-${item.title}`} item={item} />
         ))}
       </section>

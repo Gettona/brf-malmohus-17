@@ -5,6 +5,7 @@ import { PageContainer } from "@/components/PageContainer";
 import { QuickLinkCard } from "@/components/QuickLinkCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { news } from "@/data/news";
+import { getWordPressNewsItems } from "@/lib/wordpress";
 
 const quickLinks = [
   { title: "Felanmälan", description: "Få hjälp att välja rätt kontaktväg.", href: "/felguide", icon: LifeBuoy },
@@ -15,7 +16,18 @@ const quickLinks = [
   { title: "Mäklarsida", description: "Fakta och dokument för försäljning.", href: "/maklare", icon: Gavel },
 ];
 
-export default function HomePage() {
+async function getHomeNews() {
+  try {
+    const wordpressNews = await getWordPressNewsItems(3);
+    return wordpressNews.length > 0 ? wordpressNews : news.slice(0, 3);
+  } catch {
+    return news.slice(0, 3);
+  }
+}
+
+export default async function HomePage() {
+  const latestNews = await getHomeNews();
+
   return (
     <>
       <Hero />
@@ -63,7 +75,7 @@ export default function HomePage() {
             </a>
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {news.slice(0, 3).map((item) => (
+            {latestNews.map((item) => (
               <NewsCard key={item.title} item={item} />
             ))}
           </div>
