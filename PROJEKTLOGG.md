@@ -60,3 +60,21 @@
 - Startsidan och `/for-boende/nyheter` hamtar nu WordPress-inlagg som nyheter.
 - Om WordPress API inte svarar anvands befintlig statisk `data/news.ts` som fallback.
 - `/cms-test` finns kvar som intern kontrollvy for WordPress-inlagg och PDF-media.
+
+## Etapp 8 - WordPress-dokument i Next
+
+- Dokumentbanken hamtar PDF-dokument fran WordPress-inlagg.
+- PDF:er med kategori och lank i inlaggets innehall visas ihop med befintliga statiska dokument.
+- Om WordPress API inte svarar anvands befintlig dokumentdata som fallback.
+
+## Etapp 9 - Kontakt via WordPress CMS
+
+- Kontaktuppgifter, styrelse och expeditionstider kan lagras i WordPress via BRF-pluginet.
+- `/kontakt` laser dessa endpoints med fallback till befintliga statiska data.
+- Pluginet ligger i `wordpress-tools/malmohus17-cms/malmohus17-cms.php`.
+
+## Etapp 10 - Kontaktsidans texter via CMS
+
+- Kontaktsidans synliga rubriker, ingresser, korttitlar och formulartexter har flyttats till kontrollerade CMS-nycklar.
+- Ansvar och roller har lagts till som separat WordPress-innehallstyp.
+- Next/Vercel behaller layout och UX, medan WordPress far redigera innehall med fallback till standardtexter.

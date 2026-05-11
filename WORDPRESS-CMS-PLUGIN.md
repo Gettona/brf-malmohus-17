@@ -56,12 +56,50 @@ Varje öppet datum läggs in som ett eget objekt:
 - Rubrik = kan vara samma som visningstexten
 - Sidordning = kan användas för sortering
 
+## Redigera ansvar och roller
+
+Efter aktivering finns menyn:
+
+`Ansvar och roller`
+
+Varje ansvarsområde läggs in som ett eget objekt:
+
+- Rubrik = ansvarsområdets titel
+- Personer = en person per rad
+- Telefonnummer är valfritt och skrivs efter `|`
+
+Exempel:
+
+```text
+Anette Jensen
+Marcus Odelstig | 0760-273559
+```
+
+## Redigera kontaktsidans texter
+
+Efter aktivering finns sidan:
+
+`Inställningar` -> `BRF kontaktsida`
+
+Där kan administratören redigera kontaktsidans synliga texter:
+
+- Sidrubrik och ingress
+- Rubriker för e-post, telefon och expedition
+- Styrelsesektionens rubriker och ingress
+- Ansvarssektionens rubriker
+- Expeditionens rubriker och öppettidstext
+- Kontaktformulärets rubriker, hjälptrader, fältetiketter, felmeddelanden och knapptext
+
+Tomma fält använder fortfarande standardtexten från Vercel/Next. Det gör att sidan inte går sönder om ett fält saknas i WordPress.
+
 ## API som Next.js ska läsa
 
 När pluginet är installerat ska dessa endpoints finnas:
 
 - `https://admin.brfpilot.se/wp-json/brf/v1/contact`
+- `https://admin.brfpilot.se/wp-json/brf/v1/contact-page-texts`
 - `https://admin.brfpilot.se/wp-json/wp/v2/brf-board-members?_embed=1&orderby=menu_order&order=asc`
 - `https://admin.brfpilot.se/wp-json/wp/v2/brf-office-dates?orderby=menu_order&order=asc`
+- `https://admin.brfpilot.se/wp-json/wp/v2/brf-responsibility-groups?orderby=menu_order&order=asc`
 
-Nästa steg efter installation är att koppla `/kontakt` i Next.js till dessa endpoints med fallback till befintliga TypeScript-data.
+`/kontakt` i Next.js läser dessa endpoints med fallback till befintliga TypeScript-data.

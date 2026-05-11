@@ -1,8 +1,9 @@
 const WORDPRESS_API_BASE = process.env.WORDPRESS_API_BASE ?? "https://admin.brfpilot.se/wp-json/wp/v2";
 
 import type { NewsItem } from "@/data/news";
-import type { BoardMember } from "@/data/boardMembers";
+import type { BoardMember, ResponsibilityGroup } from "@/data/boardMembers";
 import type { ContactInfo } from "@/data/contact";
+import type { ContactPageTexts } from "@/data/contactPageContent";
 import { documentCategories, type DocumentCategory, type DocumentItem } from "@/data/documents";
 import type { OfficeDate } from "@/data/officeHours";
 
@@ -71,6 +72,15 @@ export type WordPressOfficeDate = {
   };
 };
 
+export type WordPressResponsibilityGroup = {
+  id: number;
+  menu_order?: number;
+  title: WordPressRendered;
+  meta?: {
+    brf_people?: string;
+  };
+};
+
 export type WordPressContact = {
   brf_contact_email?: string;
   brf_contact_phone?: string;
@@ -81,6 +91,8 @@ export type WordPressContact = {
   brf_fault_report_url?: string;
   brf_broker_email?: string;
 };
+
+export type WordPressContactPageTexts = Partial<Record<keyof ContactPageTexts, string>>;
 
 async function fetchWordPress<T>(path: string): Promise<T> {
   const response = await fetch(`${WORDPRESS_API_BASE}${path}`, {
@@ -180,6 +192,40 @@ export async function getWordPressOfficeDates(fallback: OfficeDate[]): Promise<O
     .filter((item): item is OfficeDate => Boolean(item));
 
   return dates.length > 0 ? dates : fallback;
+}
+
+export async function getWordPressResponsibilityGroups(fallback: ResponsibilityGroup[]): Promise<ResponsibilityGroup[]> {
+  const items = await fetchWordPress<WordPressResponsibilityGroup[]>("/brf-responsibility-groups?per_page=100&status=publish&orderby=menu_order&order=asc");
+  const groups = items
+    .map(wordPressResponsibilityGroupToResponsibilityGroup)
+    .filter((item): item is ResponsibilityGroup => Boolean(item));
+
+  return groups.length > 0 ? groups : fallback;
+}
+
+export async function getWordPressContactPageTexts(fallback: ContactPageTexts): Promise<ContactPageTexts> {
+  const item = await fetchWordPressRest<WordPressContactPageTexts>("/brf/v1/contact-page-texts");
+  const merged = { ...fallback };
+
+  for (const key of Object.keys(fallback) as Array<keyof ContactPageTexts>) {
+    const value = item[key]?.trim();
+
+    if (!value) {
+      continue;
+    }
+
+    if (key === "formCaseTypes") {
+      merged.formCaseTypes = value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+      continue;
+    }
+
+    merged[key] = value as never;
+  }
+
+  return merged;
 }
 
 export function plainTextFromHtml(html = "") {
@@ -297,6 +343,40 @@ function wordPressOfficeDateToOfficeDate(item: WordPressOfficeDate): OfficeDate 
     date,
     label: valueOrFallback(item.meta?.brf_label, plainTextFromHtml(item.title.rendered) || date),
   };
+}
+
+function wordPressResponsibilityGroupToResponsibilityGroup(item: WordPressResponsibilityGroup): ResponsibilityGroup | null {
+  const title = plainTextFromHtml(item.title.rendered);
+
+  if (!title) {
+    return null;
+  }
+
+  const people = parseResponsibilityPeople(item.meta?.brf_people ?? "");
+
+  if (people.length === 0) {
+    return null;
+  }
+
+  return {
+    title,
+    people,
+  };
+}
+
+function parseResponsibilityPeople(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name = "", phone = ""] = line.split("|").map((part) => part.trim());
+      return {
+        name,
+        ...(phone ? { phone, phoneHref: toPhoneHref(phone) } : {}),
+      };
+    })
+    .filter((person) => Boolean(person.name));
 }
 
 function findPdfHref(html = "") {

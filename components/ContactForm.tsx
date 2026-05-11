@@ -4,9 +4,9 @@ import { useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, Paperclip } from "lucide-react";
-import { contact } from "@/data/contact";
+import { contact, type ContactInfo } from "@/data/contact";
+import { contactPageTexts, type ContactPageTexts } from "@/data/contactPageContent";
 
-const caseTypes = ["Felanmälan", "Fråga till styrelsen", "Parkering", "Dokument", "Mäklare", "Annat"];
 const maxFileSize = 10 * 1024 * 1024;
 const acceptedFileTypes = [
   "application/pdf",
@@ -16,12 +16,18 @@ const acceptedFileTypes = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 const acceptedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx"];
-const fileHelpText = "Tillåtna filtyper: PDF, JPG, PNG, DOC och DOCX. Maxstorlek: 10 MB.";
 
-export function ContactForm() {
+type ContactFormProps = {
+  contactInfo?: ContactInfo;
+  texts?: ContactPageTexts;
+};
+
+export function ContactForm({ contactInfo = contact, texts = contactPageTexts }: ContactFormProps) {
   const searchParams = useSearchParams();
   const requestedType = searchParams.get("arende");
-  const [caseType, setCaseType] = useState(caseTypes.includes(requestedType ?? "") ? requestedType ?? "Felanmälan" : "Felanmälan");
+  const caseTypes = texts.formCaseTypes.length > 0 ? texts.formCaseTypes : contactPageTexts.formCaseTypes;
+  const defaultCaseType = caseTypes[0] ?? "Felanmälan";
+  const [caseType, setCaseType] = useState(caseTypes.includes(requestedType ?? "") ? requestedType ?? defaultCaseType : defaultCaseType);
   const [fileError, setFileError] = useState("");
   const [fileName, setFileName] = useState("");
 
@@ -47,13 +53,13 @@ export function ContactForm() {
 
     if (!isAllowedType) {
       event.target.value = "";
-      setFileError("Filtypen stöds inte. Välj PDF, JPG, PNG, DOC eller DOCX.");
+      setFileError(texts.formFileTypeError);
       return;
     }
 
     if (file.size > maxFileSize) {
       event.target.value = "";
-      setFileError("Filen är för stor. Maxstorlek är 10 MB.");
+      setFileError(texts.formFileSizeError);
       return;
     }
 
@@ -65,21 +71,21 @@ export function ContactForm() {
       className="rounded border border-slate-200 bg-white p-6 shadow-soft"
       onSubmit={(event) => {
         event.preventDefault();
-        window.alert("Tack. Formuläret är en prototyp och skickar ännu inte e-post.");
+        window.alert(texts.formSubmitAlert);
       }}
     >
       {/* TODO: Koppla formuläret, inklusive bifogade filer, till backend/e-posttjänst/CMS/server action/formulärtjänst. */}
       <div className="grid gap-5">
         <p className="rounded bg-brand-50 p-4 text-sm leading-6 text-slate-700">
-          Formuläret är ett förberett kontaktflöde. Tills e-postkoppling är på plats når du styrelsen direkt via{" "}
-          <a href={contact.emailHref} className="font-semibold text-brand-700 underline">
-            {contact.email}
+          {texts.formIntroBeforeEmail}{" "}
+          <a href={contactInfo.emailHref} className="font-semibold text-brand-700 underline">
+            {contactInfo.email}
           </a>
-          .
+          {texts.formIntroAfterEmail}
         </p>
 
         <label className="grid gap-2 text-sm font-semibold text-brand-900">
-          Ärendetyp
+          {texts.formCaseTypeLabel}
           <select
             className="focus-ring min-h-12 rounded border border-slate-300 bg-white px-3 text-slate-800"
             value={caseType}
@@ -96,41 +102,41 @@ export function ContactForm() {
           <div className="rounded border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800" role="alert">
             <p className="flex gap-2 font-semibold">
               <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0" size={18} />
-              Viktigt
+              {texts.formFaultAlertTitle}
             </p>
             <p className="mt-2">
-              Ordinarie felanmälan görs till Riksbyggen på{" "}
-              <a href="tel:0771860860" className="font-semibold underline" aria-label="Ring Riksbyggen på 0771 860 860">
-                0771-860 860
+              {texts.formFaultAlertBeforePhone}{" "}
+              <a href={contactInfo.riksbyggenPhoneHref} className="font-semibold underline" aria-label={`Ring Riksbyggen på ${contactInfo.riksbyggenPhone}`}>
+                {contactInfo.riksbyggenPhone}
               </a>
-              . Detta formulär skickas till styrelsen och ersätter inte en felanmälan till Riksbyggen.
+              {texts.formFaultAlertAfterPhone}
             </p>
           </div>
         ) : null}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <label className="grid gap-2 text-sm font-semibold text-brand-900">
-            Namn
+            {texts.formNameLabel}
             <input className="focus-ring min-h-12 rounded border border-slate-300 px-3 text-slate-800" required />
           </label>
           <label className="grid gap-2 text-sm font-semibold text-brand-900">
-            E-post
+            {texts.formEmailLabel}
             <input className="focus-ring min-h-12 rounded border border-slate-300 px-3 text-slate-800" type="email" required />
           </label>
         </div>
         <label className="grid gap-2 text-sm font-semibold text-brand-900">
-          Adress eller lägenhetsnummer
+          {texts.formAddressLabel}
           <input className="focus-ring min-h-12 rounded border border-slate-300 px-3 text-slate-800" />
         </label>
         <label className="grid gap-2 text-sm font-semibold text-brand-900">
-          Meddelande
+          {texts.formMessageLabel}
           <textarea className="focus-ring min-h-40 rounded border border-slate-300 p-3 text-slate-800" required />
         </label>
 
         <label className="grid gap-2 rounded border border-dashed border-slate-300 bg-warm-50 p-4 text-sm font-semibold text-brand-900">
           <span className="flex items-center gap-2">
             <Paperclip aria-hidden="true" size={18} />
-            Bifoga fil
+            {texts.formFileLabel}
           </span>
           <input
             className="focus-ring w-full rounded border border-slate-300 bg-white px-3 py-3 text-sm text-slate-800"
@@ -140,14 +146,14 @@ export function ContactForm() {
             onChange={handleFileChange}
           />
           <span id="file-help" className="text-sm font-normal leading-6 text-slate-600">
-            Du kan bifoga en fil till alla ärendetyper. {fileHelpText}
+            {texts.formFileHelpText}
           </span>
-          {fileName ? <span className="text-sm font-medium text-brand-700">Vald fil: {fileName}</span> : null}
+          {fileName ? <span className="text-sm font-medium text-brand-700">{texts.formSelectedFileLabel} {fileName}</span> : null}
           {fileError ? <span className="text-sm font-semibold text-red-700">{fileError}</span> : null}
         </label>
 
         <button className="focus-ring rounded bg-brand-700 px-5 py-3 font-semibold text-white hover:bg-brand-900" type="submit">
-          Skicka ärende
+          {texts.formSubmitLabel}
         </button>
       </div>
     </form>

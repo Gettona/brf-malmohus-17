@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: BRF Malmohus 17 CMS
- * Description: Strukturerade CMS-falt for BRF Malmohus 17: kontaktuppgifter, styrelse och expeditionstider.
- * Version: 0.1.0
+ * Description: Strukturerade CMS-falt for BRF Malmohus 17: kontakt, styrelse, ansvar, expeditionstider och sidtexter.
+ * Version: 0.2.0
  * Author: BRF Malmohus 17
  */
 
@@ -15,6 +15,7 @@ add_action('init', 'brf_cms_register_meta');
 add_action('add_meta_boxes', 'brf_cms_add_meta_boxes');
 add_action('save_post_brf_board_member', 'brf_cms_save_board_member');
 add_action('save_post_brf_office_date', 'brf_cms_save_office_date');
+add_action('save_post_brf_responsibility', 'brf_cms_save_responsibility_group');
 add_action('admin_menu', 'brf_cms_admin_menu');
 add_action('rest_api_init', 'brf_cms_register_rest_routes');
 
@@ -58,6 +59,26 @@ function brf_cms_register_post_types() {
         'menu_icon' => 'dashicons-calendar-alt',
         'supports' => array('title', 'page-attributes'),
     ));
+
+    register_post_type('brf_responsibility', array(
+        'labels' => array(
+            'name' => 'Ansvar och roller',
+            'singular_name' => 'Ansvarsgrupp',
+            'add_new_item' => 'Lagg till ansvarsgrupp',
+            'edit_item' => 'Redigera ansvarsgrupp',
+        ),
+        'public' => true,
+        'publicly_queryable' => false,
+        'exclude_from_search' => true,
+        'show_in_nav_menus' => false,
+        'has_archive' => false,
+        'show_ui' => true,
+        'show_in_menu' => true,
+        'show_in_rest' => true,
+        'rest_base' => 'brf-responsibility-groups',
+        'menu_icon' => 'dashicons-id',
+        'supports' => array('title', 'page-attributes'),
+    ));
 }
 
 function brf_cms_register_meta() {
@@ -88,11 +109,19 @@ function brf_cms_register_meta() {
         'show_in_rest' => true,
         'auth_callback' => '__return_true',
     ));
+
+    register_post_meta('brf_responsibility', 'brf_people', array(
+        'type' => 'string',
+        'single' => true,
+        'show_in_rest' => true,
+        'auth_callback' => '__return_true',
+    ));
 }
 
 function brf_cms_add_meta_boxes() {
     add_meta_box('brf_board_member_details', 'Styrelseuppgifter', 'brf_cms_board_member_meta_box', 'brf_board_member', 'normal', 'high');
     add_meta_box('brf_office_date_details', 'Expeditionstid', 'brf_cms_office_date_meta_box', 'brf_office_date', 'normal', 'high');
+    add_meta_box('brf_responsibility_details', 'Personer och telefonnummer', 'brf_cms_responsibility_meta_box', 'brf_responsibility', 'normal', 'high');
 }
 
 function brf_cms_board_member_meta_box($post) {
@@ -126,6 +155,18 @@ function brf_cms_office_date_meta_box($post) {
         <input type="text" id="brf_label" name="brf_label" value="<?php echo esc_attr($label); ?>" class="widefat" placeholder="Exempel: 11 maj">
     </p>
     <p class="description">Rubriken kan vara samma som visningstexten. Sortering kan styras med sidordning.</p>
+    <?php
+}
+
+function brf_cms_responsibility_meta_box($post) {
+    wp_nonce_field('brf_cms_save_responsibility_group', 'brf_cms_responsibility_nonce');
+    $people = get_post_meta($post->ID, 'brf_people', true);
+    ?>
+    <p>
+        <label for="brf_people"><strong>Personer</strong></label><br>
+        <textarea id="brf_people" name="brf_people" class="widefat" rows="8" placeholder="Exempel:&#10;Anette Jensen&#10;Marcus Odelstig | 0760-273559"><?php echo esc_textarea($people); ?></textarea>
+    </p>
+    <p class="description">Skriv en person per rad. Telefonnummer ar valfritt och skrivs efter ett lodstreck: Namn | telefon. Rubriken blir ansvarsgruppens titel.</p>
     <?php
 }
 
@@ -163,8 +204,25 @@ function brf_cms_save_office_date($post_id) {
     update_post_meta($post_id, 'brf_label', sanitize_text_field($_POST['brf_label'] ?? ''));
 }
 
+function brf_cms_save_responsibility_group($post_id) {
+    if (!isset($_POST['brf_cms_responsibility_nonce']) || !wp_verify_nonce($_POST['brf_cms_responsibility_nonce'], 'brf_cms_save_responsibility_group')) {
+        return;
+    }
+
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return;
+    }
+
+    if (!current_user_can('edit_post', $post_id)) {
+        return;
+    }
+
+    update_post_meta($post_id, 'brf_people', sanitize_textarea_field($_POST['brf_people'] ?? ''));
+}
+
 function brf_cms_admin_menu() {
     add_options_page('BRF kontaktuppgifter', 'BRF kontaktuppgifter', 'manage_options', 'brf-cms-contact', 'brf_cms_contact_settings_page');
+    add_options_page('BRF kontaktsida', 'BRF kontaktsida', 'manage_options', 'brf-cms-contact-page', 'brf_cms_contact_page_texts_settings_page');
 }
 
 function brf_cms_contact_settings_page() {
@@ -215,10 +273,110 @@ function brf_cms_contact_fields() {
     );
 }
 
+function brf_cms_contact_page_texts_settings_page() {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    if (isset($_POST['brf_cms_contact_page_nonce']) && wp_verify_nonce($_POST['brf_cms_contact_page_nonce'], 'brf_cms_save_contact_page_texts')) {
+        $fields = brf_cms_contact_page_text_fields();
+
+        foreach ($fields as $key => $field) {
+            update_option($key, sanitize_textarea_field($_POST[$key] ?? ''));
+        }
+
+        echo '<div class="updated"><p>Kontaktsidans texter sparades.</p></div>';
+    }
+
+    $fields = brf_cms_contact_page_text_fields();
+    ?>
+    <div class="wrap">
+        <h1>BRF kontaktsida</h1>
+        <p>Har redigeras de synliga texterna pa kontaktsidan. Lamna ett falt tomt for att anvanda standardtexten fran Vercel-sidan.</p>
+        <form method="post">
+            <?php wp_nonce_field('brf_cms_save_contact_page_texts', 'brf_cms_contact_page_nonce'); ?>
+            <table class="form-table" role="presentation">
+                <?php foreach ($fields as $key => $field) : ?>
+                    <tr>
+                        <th scope="row"><label for="<?php echo esc_attr($key); ?>"><?php echo esc_html($field['label']); ?></label></th>
+                        <td>
+                            <?php if (($field['type'] ?? 'text') === 'textarea') : ?>
+                                <textarea name="<?php echo esc_attr($key); ?>" id="<?php echo esc_attr($key); ?>" class="large-text" rows="<?php echo esc_attr($field['rows'] ?? 3); ?>"><?php echo esc_textarea(get_option($key, '')); ?></textarea>
+                            <?php else : ?>
+                                <input name="<?php echo esc_attr($key); ?>" id="<?php echo esc_attr($key); ?>" type="text" value="<?php echo esc_attr(get_option($key, '')); ?>" class="regular-text">
+                            <?php endif; ?>
+                            <?php if (!empty($field['help'])) : ?>
+                                <p class="description"><?php echo esc_html($field['help']); ?></p>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+            <?php submit_button('Spara kontaktsidans texter'); ?>
+        </form>
+    </div>
+    <?php
+}
+
+function brf_cms_contact_page_text_fields() {
+    return array(
+        'pageEyebrow' => array('label' => 'Sidhuvud: etikett'),
+        'pageTitle' => array('label' => 'Sidhuvud: rubrik'),
+        'pageDescription' => array('label' => 'Sidhuvud: ingress', 'type' => 'textarea'),
+        'emailCardTitle' => array('label' => 'Kort: e-post titel'),
+        'phoneCardTitle' => array('label' => 'Kort: telefon titel'),
+        'expeditionCardTitle' => array('label' => 'Kort: expedition titel'),
+        'boardEyebrow' => array('label' => 'Styrelse: etikett'),
+        'boardTitle' => array('label' => 'Styrelse: rubrik'),
+        'boardDescription' => array('label' => 'Styrelse: ingress', 'type' => 'textarea'),
+        'responsibilityEyebrow' => array('label' => 'Ansvar: etikett'),
+        'responsibilityTitle' => array('label' => 'Ansvar: rubrik'),
+        'expeditionEyebrow' => array('label' => 'Expedition: etikett'),
+        'expeditionTitle' => array('label' => 'Expedition: rubrik'),
+        'addressCardTitle' => array('label' => 'Kort: adress titel'),
+        'telephoneHoursCardTitle' => array('label' => 'Kort: telefontid titel'),
+        'officeYearEyebrow' => array('label' => 'Oppettider: etikett'),
+        'officeTitle' => array('label' => 'Oppettider: rubrik'),
+        'officeDescription' => array('label' => 'Oppettider: ingress', 'type' => 'textarea'),
+        'formEyebrow' => array('label' => 'Formular: etikett'),
+        'formTitle' => array('label' => 'Formular: rubrik'),
+        'formDescription' => array('label' => 'Formular: ingress', 'type' => 'textarea'),
+        'contactPanelTitle' => array('label' => 'Mork kontaktbox: rubrik'),
+        'contactPanelEmailLabel' => array('label' => 'Mork kontaktbox: e-post etikett'),
+        'contactPanelPhoneLabel' => array('label' => 'Mork kontaktbox: telefon etikett'),
+        'contactPanelExpeditionLabel' => array('label' => 'Mork kontaktbox: expedition etikett'),
+        'formLoadingText' => array('label' => 'Formular: laddningstext'),
+        'formIntroBeforeEmail' => array('label' => 'Formular: intro fore e-post', 'type' => 'textarea'),
+        'formIntroAfterEmail' => array('label' => 'Formular: intro efter e-post'),
+        'formCaseTypeLabel' => array('label' => 'Formular: arendetyp etikett'),
+        'formCaseTypes' => array('label' => 'Formular: arendetyper', 'help' => 'Skriv alternativen separerade med kommatecken, exempel: Felanmalan, Fraga till styrelsen, Parkering'),
+        'formFaultAlertTitle' => array('label' => 'Felanmalan-ruta: rubrik'),
+        'formFaultAlertBeforePhone' => array('label' => 'Felanmalan-ruta: text fore telefon', 'type' => 'textarea'),
+        'formFaultAlertAfterPhone' => array('label' => 'Felanmalan-ruta: text efter telefon', 'type' => 'textarea'),
+        'formNameLabel' => array('label' => 'Formular: namn etikett'),
+        'formEmailLabel' => array('label' => 'Formular: e-post etikett'),
+        'formAddressLabel' => array('label' => 'Formular: adress etikett'),
+        'formMessageLabel' => array('label' => 'Formular: meddelande etikett'),
+        'formFileLabel' => array('label' => 'Formular: bifoga fil etikett'),
+        'formFileHelpText' => array('label' => 'Formular: filhjalp', 'type' => 'textarea'),
+        'formSelectedFileLabel' => array('label' => 'Formular: vald fil etikett'),
+        'formFileTypeError' => array('label' => 'Formular: fel filtyp', 'type' => 'textarea'),
+        'formFileSizeError' => array('label' => 'Formular: for stor fil', 'type' => 'textarea'),
+        'formSubmitLabel' => array('label' => 'Formular: knapptext'),
+        'formSubmitAlert' => array('label' => 'Formular: tackmeddelande', 'type' => 'textarea'),
+    );
+}
+
 function brf_cms_register_rest_routes() {
     register_rest_route('brf/v1', '/contact', array(
         'methods' => 'GET',
         'callback' => 'brf_cms_get_contact_rest',
+        'permission_callback' => '__return_true',
+    ));
+
+    register_rest_route('brf/v1', '/contact-page-texts', array(
+        'methods' => 'GET',
+        'callback' => 'brf_cms_get_contact_page_texts_rest',
         'permission_callback' => '__return_true',
     ));
 }
@@ -228,6 +386,17 @@ function brf_cms_get_contact_rest() {
     $data = array();
 
     foreach ($fields as $key => $label) {
+        $data[$key] = get_option($key, '');
+    }
+
+    return rest_ensure_response($data);
+}
+
+function brf_cms_get_contact_page_texts_rest() {
+    $fields = brf_cms_contact_page_text_fields();
+    $data = array();
+
+    foreach ($fields as $key => $field) {
         $data[$key] = get_option($key, '');
     }
 
