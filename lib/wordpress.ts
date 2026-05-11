@@ -11,10 +11,16 @@ export type WordPressPost = {
   date: string;
   link: string;
   slug: string;
+  featured_media: number;
   title: WordPressRendered;
   excerpt: WordPressRendered;
   content: WordPressRendered;
   _embedded?: {
+    "wp:featuredmedia"?: Array<{
+      source_url?: string;
+      alt_text?: string;
+      title?: WordPressRendered;
+    }>;
     "wp:term"?: Array<
       Array<{
         id: number;
@@ -89,6 +95,7 @@ function wordPressPostToNewsItem(post: WordPressPost): NewsItem | null {
     date: post.date.split("T")[0] ?? post.date,
     category: getPostCategory(post),
     excerpt,
+    ...getPostImage(post),
   };
 }
 
@@ -96,6 +103,30 @@ function getPostCategory(post: WordPressPost) {
   const terms = post._embedded?.["wp:term"]?.flat() ?? [];
   const category = terms.find((term) => term.taxonomy === "category" && term.name !== "Uncategorized");
   return category?.name ? plainTextFromHtml(category.name) : "Nyhet";
+}
+
+function getPostImage(post: WordPressPost): Pick<NewsItem, "image" | "imageAlt"> {
+  const featuredMedia = post._embedded?.["wp:featuredmedia"]?.[0];
+
+  if (featuredMedia?.source_url) {
+    return {
+      image: featuredMedia.source_url,
+      imageAlt: featuredMedia.alt_text || plainTextFromHtml(featuredMedia.title?.rendered),
+    };
+  }
+
+  const contentImage = post.content.rendered?.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+
+  if (!contentImage?.[1]) {
+    return {};
+  }
+
+  const alt = contentImage[0].match(/alt=["']([^"']*)["']/i)?.[1];
+
+  return {
+    image: decodeHtmlEntities(contentImage[1]),
+    imageAlt: alt ? decodeHtmlEntities(alt) : "",
+  };
 }
 
 function decodeHtmlEntities(value = "") {
