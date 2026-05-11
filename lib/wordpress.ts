@@ -182,7 +182,7 @@ export async function getWordPressBoardMembers(fallback: BoardMember[]): Promise
     .map(wordPressBoardMemberToBoardMember)
     .filter((item): item is BoardMember => Boolean(item));
 
-  return members.length > 0 ? members : fallback;
+  return members.length > 0 ? mergeBoardMembers(fallback, members) : fallback;
 }
 
 export async function getWordPressOfficeDates(fallback: OfficeDate[]): Promise<OfficeDate[]> {
@@ -330,6 +330,34 @@ function wordPressBoardMemberToBoardMember(item: WordPressBoardMember): BoardMem
     ...(phone ? { phone, phoneHref: toPhoneHref(phone) } : {}),
     ...(image ? { image } : {}),
   };
+}
+
+function mergeBoardMembers(fallback: BoardMember[], wordpressMembers: BoardMember[]) {
+  const wordpressByName = new Map(wordpressMembers.map((member) => [normalizeKey(member.name), member]));
+  const merged = fallback.map((member) => {
+    const wordpressMember = wordpressByName.get(normalizeKey(member.name));
+
+    if (!wordpressMember) {
+      return member;
+    }
+
+    wordpressByName.delete(normalizeKey(member.name));
+
+    return {
+      ...member,
+      ...wordpressMember,
+      role: wordpressMember.role === "Styrelsemedlem" ? member.role : wordpressMember.role,
+      phone: wordpressMember.phone || member.phone,
+      phoneHref: wordpressMember.phoneHref || member.phoneHref,
+      image: wordpressMember.image || member.image,
+    };
+  });
+
+  return [...merged, ...wordpressByName.values()];
+}
+
+function normalizeKey(value: string) {
+  return value.trim().toLocaleLowerCase("sv-SE");
 }
 
 function wordPressOfficeDateToOfficeDate(item: WordPressOfficeDate): OfficeDate | null {

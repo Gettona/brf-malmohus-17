@@ -43,6 +43,15 @@ Varje styrelsemedlem läggs in som ett eget objekt:
 - Utvald bild = valfri porträttbild
 - Sidordning = kan användas för sortering
 
+Om en styrelsemedlem finns både i WordPress och i den befintliga Vercel-datan matchas personen på namn. Tomma WordPress-fält använder då befintlig roll, telefon och bild som fallback tills redaktören fyller i dem i WordPress.
+
+För att byta bild:
+
+1. Öppna styrelsemedlemmen i WordPress.
+2. Välj `Utvald bild`.
+3. Ladda upp eller välj en bild från mediebiblioteket.
+4. Uppdatera posten.
+
 ## Redigera expeditionstider
 
 Efter aktivering finns menyn:

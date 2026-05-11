@@ -18,6 +18,11 @@ add_action('save_post_brf_office_date', 'brf_cms_save_office_date');
 add_action('save_post_brf_responsibility', 'brf_cms_save_responsibility_group');
 add_action('admin_menu', 'brf_cms_admin_menu');
 add_action('rest_api_init', 'brf_cms_register_rest_routes');
+add_action('after_setup_theme', 'brf_cms_enable_featured_images');
+
+function brf_cms_enable_featured_images() {
+    add_theme_support('post-thumbnails', array('post', 'page', 'brf_board_member'));
+}
 
 function brf_cms_register_post_types() {
     register_post_type('brf_board_member', array(
